@@ -1,14 +1,8 @@
 # script to create the special matrices
 import numpy as np
-from scipy.sparse import block_diag 
+from scipy.sparse import block_diag, hstack, vstack
 
-def build_start_to_schedule_matrix(number_captains = 1):
-	# 72 possible tours per day
-	# 6 2-hour blocks of 12 tours
-	# 7 days in a week
-	tours_per_block = 12
-	blocks_per_day = 6
-	days = 7
+def build_start_to_schedule_matrix(number_captains = 1, tours_per_block = 12, blocks_per_day = 6, days = 7):
 	# create basic matrices and then build via blocks
 	I_temp = np.identity(tours_per_block)
 	zero_temp = np.zeros((tours_per_block, tours_per_block))
@@ -27,22 +21,27 @@ def build_start_to_schedule_matrix(number_captains = 1):
 	# now, block diagonal stack L_prime for the number of captains 
 	return (block_diag([L_prime] * number_captains)).tocsr()
 
-def build_phi_matrix(number_captains = 1):
-	# 72 possible tours per day
-	# 6 2-hour blocks of 12 tours
-	# 7 days in a week
-	tours_per_block = 12
-	blocks_per_day = 6
-	days = 7
+def build_phi_matrix(number_captains = 1, tours_per_block = 12, blocks_per_day = 6, days = 7):
 	one_temp = np.ones(tours_per_block * blocks_per_day)
 	phi_tilde = block_diag([one_temp] * days)
 	return (block_diag([phi_tilde] * number_captains)).tocsr()
 
-# try some test cases
-number_captains = 40
-#test = np.random.randint(low = 0, high = 1, size = 7 * 72 * number_captains)
-sts_mat = build_start_to_schedule_matrix(number_captains)
-phi_mat = build_phi_matrix(number_captains)
-print phi_mat.shape
-print sts_mat.shape
+def build_inequality_matrix(number_captains = 1, tours_per_block = 12, blocks_per_day = 6, days = 7):
+	# first, build Psi
+	one_temp = np.ones(tours_per_block * blocks_per_day)
+	psi_tilde = block_diag([one_temp] * days)
+	Psi = block_diag([psi_tilde] * number_captains).tocsr()
+	# next, build S
+	one_temp = np.ones(tours_per_block * blocks_per_day * days)
+	S = block_diag([one_temp] * number_captains).tocsr()
+	# build M Matrix to keep # of captains per day low
+	one_temp = np.ones(tours_per_block * blocks_per_day)
+	M_tilde = block_diag([one_temp] * days)
+	M = hstack([M_tilde] * number_captains)
+	return vstack((Psi, S, M)).tocsr()
 
+def build_equality_matrix(number_captains = 1, tours_per_block = 12, blocks_per_day = 6, days = 7):
+	# finally, build E
+	E = np.hstack([-1 * np.identity(tours_per_block * blocks_per_day * days)] * number_captains)
+	STS = build_start_to_schedule_matrix(number_captains, tours_per_block, blocks_per_day, days)
+	return E * STS
