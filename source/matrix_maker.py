@@ -1,6 +1,6 @@
 # script to create the special matrices
 import numpy as np
-from scipy.sparse import block_diag, hstack, vstack
+from scipy.sparse import block_diag, hstack, vstack, csr_matrix
 
 def build_start_to_schedule_matrix(number_captains = 1, tours_per_block = 12, blocks_per_day = 6, days = 7):
 	# create basic matrices and then build via blocks
@@ -42,6 +42,50 @@ def build_inequality_matrix(number_captains = 1, tours_per_block = 12, blocks_pe
 
 def build_equality_matrix(number_captains = 1, tours_per_block = 12, blocks_per_day = 6, days = 7):
 	# finally, build E
-	E = np.hstack([-1 * np.identity(tours_per_block * blocks_per_day * days)] * number_captains)
+	E = csr_matrix(np.hstack([np.identity(tours_per_block * blocks_per_day * days)] * number_captains))
 	STS = build_start_to_schedule_matrix(number_captains, tours_per_block, blocks_per_day, days)
-	return E * STS
+
+	return (E * STS).tocsr()
+
+# builds 
+def build_inequality_constraint_vect(number_captains = 1, tours_per_block = 12, blocks_per_day = 6, days = 7):
+	phi_const_vect = np.matrix(np.ones(days * number_captains))
+	phi_const_vect = phi_const_vect.T
+	# the 4 coefficient is hard coded, should be an input 
+	S_const_vect = np.matrix(np.ones(number_captains) * 4)
+	S_const_vect = S_const_vect.T
+	M_const_vect = np.matrix(np.ones(days) * 18)
+	M_const_vect = M_const_vect.T
+	return np.vstack((phi_const_vect, S_const_vect, M_const_vect))
+
+
+def build_equality_constraint_vect(number_captains = 1, tours_per_block = 12, blocks_per_day = 6, days = 7):
+	temp_vect = np.matrix([0,0,1])
+	temp_vect = temp_vect.T
+	# hard coded for 3rd time slot, should be an input
+	temp_zero_vect = np.matrix(np.zeros(9))
+	temp_zero_vect = temp_zero_vect.T
+	temp = np.vstack([temp_vect] * 21)
+	temp = np.vstack([temp, temp_zero_vect])
+	E_const_vect = temp
+	E_const_vect = np.vstack([E_const_vect] * days)	
+	return E_const_vect
+
+def build_dictionary(number_captains = 1, tours_per_block = 12, blocks_per_day = 6, days = 7):
+	d = []
+	for i in range(number_captains * tours_per_block * blocks_per_day * days):
+		d.append((i, [0,1]))
+
+	return dict(d)
+
+
+
+
+
+
+
+
+
+
+
+
