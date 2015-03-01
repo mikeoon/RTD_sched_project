@@ -78,8 +78,21 @@ def build_dictionary(number_captains = 1, tours_per_block = 12, blocks_per_day =
 
 	return dict(d)
 
+# Creates a matrix of what schedule the bnb creates. can also be used to see current schedule, just have to update
+# the parameters to how far you have gone in the bnb
+def convert_to_matrix(cap_dict, number_captains = 1, tours_per_block = 12, blocks_per_day = 6, days = 7):
+	# create first matrix to stack on
+	sched_matrix = np.zeros(tours_per_block * blocks_per_day * days)
+	sched_matrix[cap_dict[0]] = 1
+	sched_matrix = np.matrix(sched_matrix)
 
+	for i in range(number_captains - 1):
+		temp_row = np.zeros(tours_per_block * blocks_per_day * days)
+		temp_row[cap_dict[i+1]] = 1
+		temp_row = np.matrix(temp_row)
+		sched_matrix = np.vstack((sched_matrix, temp_row))
 
+	return sched_matrix
 
 
 
