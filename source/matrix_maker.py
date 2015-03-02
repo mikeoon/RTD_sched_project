@@ -70,7 +70,7 @@ def build_equality_constraint_vect(number_captains = 1, tours_per_block = 12, bl
 	temp_zero_vect = np.matrix(np.zeros(9)).T
 	temp = np.vstack([temp_vect] * 21)
 	temp = np.vstack([temp, temp_zero_vect])
-	return np.vstack([temp] * days)
+	return np.matrix(np.vstack([temp] * days))
 
 
 def build_dictionary(number_captains = 1, tours_per_block = 12, blocks_per_day = 6, days = 7):
@@ -92,7 +92,6 @@ def convert_to_matrix(cap_dict, number_captains = 1, tours_per_block = 12, block
 		temp_row[cap_dict[i+1]] = 1
 		temp_row = np.matrix(temp_row)
 		sched_matrix = np.vstack((sched_matrix, temp_row))
-
 	return sched_matrix
 
 def convert_to_vector(cap_dict, number_captains = 1, tours_per_block = 12, blocks_per_day = 6, days = 7, captain = -1):
@@ -113,6 +112,15 @@ def convert_to_vector(cap_dict, number_captains = 1, tours_per_block = 12, block
 			temp_vec[time] = 1
 		sched_vec.append(temp_vec)
 	return np.matrix(np.hstack(sched_vec)).T
+
+def vector_to_matrix(vec, number_captains = 1, tours_per_block = 12, blocks_per_day = 6, days = 7):
+	vec = vec.T #make a row vector
+	step = tours_per_block * blocks_per_day * days 
+	temp = []
+	for i in range(number_captains):
+		temp.append(vec[0, (i * step):((i+1) * step)])
+	return np.vstack(temp)
+
 
 
 

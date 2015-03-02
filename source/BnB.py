@@ -23,7 +23,7 @@ def individual_constraints_satisfied(capt_dict, captain, max_days_worked, Psi_ma
 	# if all constraints satisfied, the sum of the list will be 0
 	return dwpc == stpd == True
 
-def tours_per_time_slot_constraint(capt_dict, time_slot_constraints, total_tours_mat):
+def tours_per_time_slot_constraint(capt_dict, time_slot_constraints, total_tours_mat, day):
 	# return true if constraint is satisfied
 	sched_vec = mm.convert_to_vector(capt_dict, number_captains = len(cap_dict))
 	tours_per_time_slot =  total_tours_mat * sched_vec # ttm is equality matrix
@@ -33,6 +33,10 @@ def number_daily_captains_constraint(capt_dict, number_daily_captains_constraint
 	# return true if constraint is satisfied
 	sched_vec = mm.convert_to_vector(capt_dict, number_captains = len(cap_dict))
 	return (M_matrix * sched_vec) == np.matrix(number_daily_captains_constraint).T
+
+def number_daily_captains(capt_dict, M_matrix):
+	sched_vec = mm.convert_to_vector(capt_dict, number_captains = len(cap_dict))
+	return (M_matrix * sched_vec)
 
 def equality_constraints_satisfied(capt_dict, time_slot_constraints, 
 	number_daily_captains_constraint, total_tours_mat, M_matrix, day):
@@ -86,6 +90,7 @@ def build_feasible_schedule(number_captains = 1, tours_per_block = 12,
 	tours_timeslot_mat = mm.build_equality_matrix(number_captains)
 	tours_timeslot_vec = mm.build_equality_constraint_vect(number_captains)
 	M_matrix = mm.build_M_matrix(number_captains)
+	sts_mat = mm.build_start_to_schedule_matrix(number_captains)
 	if daily_captains_constraint == None:
 		daily_captains_constraint = np.ones(7) * 20
 
@@ -99,20 +104,32 @@ def build_feasible_schedule(number_captains = 1, tours_per_block = 12,
 			for captain in range(number_captains):
 			#for timeslot in range(tours_per_block * blocks_per_day):
 				#prev = cap_dict[captain] # save the previous schedule
-				print len(capt_dict[captain])
+				#print len(capt_dict[captain])
 				# add in the new timeslot
 				capt_dict[captain].append(timeslot + (day * tours_per_block * blocks_per_day))
 				# if this new addition does not violate the captain's constraint, 
 				# keep it and exit this for loop
-				tptsc = tours_per_time_slot_constraint(capt_dict, tours_timeslot_vec, tours_timeslot_mat)
-				tptsc = tptsc[(day * tours_per_block * blocks_per_day):((day + 1) * tours_per_block * blocks_per_day)]
-				if individual_constraints_satisfied(capt_dict, captain, max_days_worked, Psi_matrix):
-					break
-				else: # otherwise, run the loop again
+				#tptsc = tours_per_time_slot_constraint(capt_dict, tours_timeslot_vec, tours_timeslot_mat)
+				#tptsc = tptsc[(day * tours_per_block * blocks_per_day):((day + 1) * tours_per_block * blocks_per_day)]
+				#tptsc = tptsc[timeslot + (days * tours_per_block * blocks_per_day * captain)]
+				mat_schedule = mm.convert_to_matrix(capt_dict, number_captains)
+				#print np.sum(np.sum(mat_schedule, axis =1), axis = 0)
+				vec_schedule = sts_mat * mm.convert_to_vector(capt_dict, number_captains)
+				#print vec_schedule.shape
+				#print mm.vector_to_matrix(vec_schedule).shape
+				tours = np.sum(mm.vector_to_matrix(vec_schedule), axis = 0)[0, timeslot + (day * tours_per_block * blocks_per_day)]
+				total_caps = number_daily_captains(capt_dict, M_matrix)
+				if tours > tours_timeslot_vec[timeslot + (day * tours_per_block * blocks_per_day)]:
+					capt_dict[captain].pop()
+				elif total_caps[day] > daily_captains_constraint[day]:
+					capt_dict[captain].pop()
+				#elif individual_constraints_satisfied(capt_dict, captain, max_days_worked, Psi_matrix):
+				#	break
+				else:
 					capt_dict[captain].pop()
 			# check to see if this day's constraints are satisfied
 			# first, tours per time slot
-			tptsc = tours_per_time_slot_constraint(capt_dict, tours_timeslot_vec, tours_timeslot_mat)
+			tptsc = tours_per_time_slot_constraint(capt_dict, tours_timeslot_vec, tours_timeslot_mat, day)
 			# however, we only want this day's constraints
 			tptsc = tptsc[(day * tours_per_block * blocks_per_day):((day + 1) * tours_per_block * blocks_per_day)]
 			# second, how captains are working this day
@@ -142,7 +159,7 @@ equal_matrix = mm.build_equality_matrix(number_captains)
 equal_constraint_matrix = mm.build_equality_constraint_vect(number_captains)
 #print ((equal_matrix * x_feasible) == equal_constraint_matrix)[288:360]
 ################################################################################
-
+print equal_matrix * x_feasible - equal_constraint_matrix
 # captain queue, allows for captains to get an even share of shifts
 cap_q = Q.Queue()
 for i in range(number_captains):
