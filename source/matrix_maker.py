@@ -95,9 +95,9 @@ def convert_to_matrix(cap_dict, number_captains = 1, tours_per_block = 12, block
 
 	return sched_matrix
 
-def convert_to_vector(cap_dict, number_captains = 1, tours_per_block = 12, blocks_per_day = 6, days = 7, captain = None):
+def convert_to_vector(cap_dict, number_captains = 1, tours_per_block = 12, blocks_per_day = 6, days = 7, captain = -1):
 	# if we wish to look at a specific captain's start schedule, override
-	if captain is not None:
+	if captain is not -1:
 		capt_start_times = cap_dict[captain]
 		temp_vec = np.zeros(tours_per_block * blocks_per_day * days)
 		for time in capt_start_times:
