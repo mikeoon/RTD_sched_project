@@ -100,9 +100,9 @@ def build_feasible_schedule(number_captains = 1, tours_per_block = 12,
 		capt_dict[i] = []
 
 	for day in range(days):
-		for timeslot in range(tours_per_block * blocks_per_day):
-			for captain in range(number_captains):
-			#for timeslot in range(tours_per_block * blocks_per_day):
+		#for timeslot in range(tours_per_block * blocks_per_day):
+		for captain in range(number_captains):
+			for timeslot in range(tours_per_block * blocks_per_day):
 				#prev = cap_dict[captain] # save the previous schedule
 				#print len(capt_dict[captain])
 				# add in the new timeslot
@@ -123,8 +123,8 @@ def build_feasible_schedule(number_captains = 1, tours_per_block = 12,
 					capt_dict[captain].pop()
 				elif total_caps[day] > daily_captains_constraint[day]:
 					capt_dict[captain].pop()
-				#elif individual_constraints_satisfied(capt_dict, captain, max_days_worked, Psi_matrix):
-				#	break
+				elif individual_constraints_satisfied(capt_dict, captain, max_days_worked, Psi_matrix):
+					break
 				else:
 					capt_dict[captain].pop()
 			# check to see if this day's constraints are satisfied
@@ -136,8 +136,8 @@ def build_feasible_schedule(number_captains = 1, tours_per_block = 12,
 			ndcc = number_daily_captains_constraint(capt_dict, daily_captains_constraint, M_matrix)
 			# however, we only want this day's constriants
 			ndcc = ndcc[day]
-			if (sum(tptsc) == len(tptsc)) and (ndcc == True):
-				break
+			#if (sum(tptsc) == len(tptsc)) and (ndcc == True):
+			#	break
 	return capt_dict
 
 

@@ -1,0 +1,126 @@
+\documentclass[12pt]{article}
+
+\oddsidemargin=.05in
+\evensidemargin=.05in
+\topmargin=-0.5in
+\textwidth=6.5in
+\textheight=9in
+%\pagestyle{empty}
+
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{easylist}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{arrows,automata}
+
+\begin{document}
+\noindent
+Zach Bickel\\
+Michael Yoon\\
+March 2, 2015
+\begin{center}
+\huge{Math 480 Project Draft}\\
+\large{Captain Scheduling for Ride the Ducks}
+\end{center}
+
+\begin{abstract}
+This paper describes the model and solution we derived from a scheduling problem for a 
+small business, Ride the Ducks of Seattle. The objective was to create scheduling 
+software that not only created a schedule, but also satisfied the wants and needs of the 
+company as well as the workers. The problem is modeled as a Mixed Integer Problem 
+and fitted with a branch and bound algorithm. After simplifying the problem at hand to 
+fix the model we wanted to use, we were able to derive decision variables and a cost 
+function to minimize. We took a two-step process. First, we began with a schedule 
+creator with no branch and bound algorithm implemented to satisfy the constraints of the 
+workers and the company and create the most basic schedule. We then implemented the 
+branch and bound algorithm to minimize the number of captains a day while still 
+maintaining the constraints set in place in the first step. Our finished product will be used 
+by Ride the Ducks with the option of changing constraints to fit their week-to-week 
+schedule making.
+\end{abstract}
+
+\section*{Goal}
+Scheduling problems are very common for small businesses where many managers are
+still doing it by hand. This can lead to hours of tinkering with the schedule to get the most 
+out of the workers. Ride the Ducks of Seattle is a major tourist attraction that takes their 
+customers on a tour of Seattle on land and water. A captain directs each tour; the captains 
+are the ones who operate the vehicles, known as ducks, and gives the tours. The ducks are 
+the pride and joy of the company. These vehicles are capable of going on land to water 
+and vise versa. Each tour is 2 hours long, which includes about 90 minutes of touring 
+with a 30-minute break for the captains. The amount of tours run depends seasonally with 
+the warmer seasons needing more tours than the cooler seasons. Scheduling the captains 
+and their ducks in a way that satisfies working conditions by the company as well as the 
+individual captains can be tricky. Management at Ride the Ducks of Seattle currently 
+spends upwards of ten hours per week scheduling captains for tours. Ten hours creating a 
+schedule is much too long, we believe we can not only create a schedule for Ride the 
+Ducks much faster, but also create a schedule that allows the company to run tours 
+efficiently while satisfying the captains’ and the company’s needs. Our goal is to build 
+scheduling software that will drastically cut time down and automatically build a 
+schedule. This will be flexible enough so that a user will be able to update the constraints
+as they come up. Ride the Ducks of Seattle is a very private about the details for how 
+their company is run. They keep much of their data to themselves to protect the company 
+from those that want them gone. Due to their privacy, the notion of making the 
+scheduling software easy to edit and make changes to is crucial. The company can then 
+make their own schedules with the data that they might not have given us. With this 
+schedule creator, we hope that Ride the Ducks will spend less time working on 
+scheduling the captains and spend their newly acquired time efficiently. 
+
+\section*{Simplifications}
+Ride the Ducks is open 7 days a week from 9 AM to 9 PM and offers 90-minute tours 
+where the driver ideally gets 30 minutes of rest before the next tour. There is one captain 
+and one duck per tour. Each captain is not supposed to work more than four days a week 
+and there are special constraints for individual captains, such as “Captain A cannot work 
+on Tuesday”. Our objective is to minimize the total number of 4-day stretches all captains 
+have to work. Minimizing these 4-day stretches is a way to keep the workers rested and 
+keep hours even among the captains that need them.  We started by figuring out what a 
+Ride the Ducks schedule looks like. The schedule is broken down into which captains are
+working what days and the times that day that captain will be running a tour. The 
+schedule also gives one or two captains that are “on-call” so that if a captain has a 
+conflict day of or more tours than expected or scheduled the captains “on-call” can come 
+in and help. From the schedule given by the company we were able to break down the 
+schedule into decisions. The decisions include, how many captains are available, how 
+many captains we want in a day, how many time slots for tours, and a captain’s own 
+restrictions on which days he or she can work. These decisions we believe are the most 
+important to creating a schedule. With these decisions we made assumptions to certain 
+aspects of the variables involved. For the tours, we capped the total length at 120 minutes 
+which incudes the tour and rest time for the captains. The time slots for those tours are set 
+to a default of one tour every 10 minutes. The number of captains in our problem is 40, 
+with 22 captains scheduled a day, 2 of which are on-call. We simplified each block of 
+tours to be 6 blocks of tours per day. A block of tours is the 2-hour period in which a 
+captain is out on a tour. So, if the company is open for 12 hours a day, there are 6 blocks 
+of tours.
+
+
+\section*{Decision Variables and Parameters} First, let's define some parameters:
+\begin{align*}
+n &\equiv \text{Number of captains,}\\
+m &\equiv \text{Number of tour slots per 2-hour blocks in one day,}\\
+b &\equiv \text{Number of 2-hour blocks in one day,}\\
+k &\equiv \text{Number of time slots per day.}
+\end{align*}
+If there are $n$ captains and $k$ time slots in a day, then there are $7kn$ decision variables. Note that $k = mb$. Our decision variables will represent when the captains will start their shifts. We can understand them as a matrix $X$, where $x_{ijd}$ = 1 if captain $i \in \{1, 2, \dots, n\}$ begins their shift at time $j \in \{1, 2, \dots k\}$ on day $d \in \{1, 2, \dots, 7\}$ and 0 otherwise.
+
+\section*{Objective Function}
+Our objective function will represent the number of 4-day stretches captains have to work and our goal will be to minimize this in order to keep captain fatigue low. For readability purposes, let's define a separate function $w(i, d)$ to represent captain $i$ working on day $d$:
+$$w(i,d) = \sum_{j = 1}^{k}{x_{ijd}}.$$
+So, $w(i,d) = 1$ if captain $i$ works on day $d$ and 0 otherwise. Then $w(i, 1)w(i, 2)w(i, 3)w(i, 4) = 1$ implies that captain works on days 1, 2, 3 and 4. Our objective function $f$ is thus:
+$$f(i) = [w(i, 1) \cdots w(i, 4)] + [w(i, 2) \cdots w(i, 5)] + \cdots + [w(i, 4) \cdots w(i, 7)] + [w(i, 5) w(i, 6) w(i, 7) w(i,1)].$$
+Note that the last term in the function wraps around to make sure that we are not loading the schedule too heavily towards the weekend shifts.
+
+\section*{Constraints}
+\begin{enumerate}
+\item[(1)] Number of daily captains constraint: We want to have $c_d$ captains at work on day $d$.
+$$\sum_{i = 1}^{n}\sum_{j = 1}^{k}{\mathbf{x}_{ijd}} = c_d$$
+\item[(2)] Multiple start times constraint. The captain can only have one start time for each day.
+On day $d = 1,\dots, 7$, and for all captains $i = 1,\dots, n$:
+$$\sum_{j = k(d-1) + 1}^{kd}{\mathbf{x}_{ij}} \le 1$$
+\item[(3)] Number of days worked constraint. Each captain can only work a maximum of 4 days per week. 
+For each captain $i$:
+$$\sum_{j = 1}^{7k}{\mathbf{x}_{ij}} \le 4$$
+\item[(4)] Tours per time slot constraint. We would like to have a minimum number of captains available at each time slot in order to run the required number of tours. If we want $t_j$ tours at time slot $j$:
+$$\sum_{i = 1}^{n}{\mathbf{x}_{ij}} \ge t_j$$
+\item[(5)] Captain unavailability constraint. If captain $i$ is unavailable on day $d$:
+$$\sum_{j = k(d-1) + 1}^{kd}{\mathbf{x}_{ij}} = 0$$
+\end{enumerate}
+
+\end{document}
