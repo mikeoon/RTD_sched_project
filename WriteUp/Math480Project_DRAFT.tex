@@ -7,21 +7,30 @@
 \textheight=9in
 %\pagestyle{empty}
 
+\usepackage{multicol}
 \usepackage{amsmath,amssymb,amsthm}
 \usepackage{easylist}
 \usepackage{graphicx}
-\usepackage{tikz}
-\usetikzlibrary{arrows,automata}
+\newtheorem*{theorem}{Theorem}
+\newtheorem*{claim}{Claim}
+\newtheorem*{proposition}{Proposition}
+\renewcommand{\qedsymbol}{\ensuremath{\blacksquare}}
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{Math 480 Project}
+%\chead{Captain Scheduling for Ride the Ducks}
+\rhead{Bickel and Yoon}
+\cfoot{\thepage}
+
 
 \begin{document}
-\noindent
-Zach Bickel\\
-Michael Yoon\\
-March 2, 2015
-\begin{center}
-\huge{Math 480 Project Draft}\\
-\large{Captain Scheduling for Ride the Ducks}
-\end{center}
+
+\title{Math 480 Project Draft \\ Captain Scheduling for Ride the Ducks} 
+
+\author{Zach Bickel and Michael Yoon}
+\date{March 2, 2015}
+\maketitle
 
 \begin{abstract}
 This paper describes the model and solution we derived from a scheduling problem for a 
@@ -30,14 +39,14 @@ software that not only created a schedule, but also satisfied the wants and need
 company as well as the workers. The problem is modeled as a Mixed Integer Problem 
 and fitted with a branch and bound algorithm. After simplifying the problem at hand to 
 fix the model we wanted to use, we were able to derive decision variables and a cost 
-function to minimize. We took a two-step process. First, we began with a schedule 
-creator with no branch and bound algorithm implemented to satisfy the constraints of the 
-workers and the company and create the most basic schedule. We then implemented the 
-branch and bound algorithm to minimize the number of captains a day while still 
-maintaining the constraints set in place in the first step. Our finished product will be used 
+function to minimize. We used a two-step process. First, we began with a schedule 
+creator with no branch and bound algorithm implemented simply to satisfy the constraints of the 
+workers and the company. We then implemented the 
+branch and bound algorithm to obtain a feasible solution with a better score than the original solution. Our finished product will be used 
 by Ride the Ducks with the option of changing constraints to fit their week-to-week 
 schedule making.
 \end{abstract}
+
 
 \section*{Goal}
 Scheduling problems are very common for small businesses where many managers are
@@ -90,6 +99,39 @@ tours to be 6 blocks of tours per day. A block of tours is the 2-hour period in 
 captain is out on a tour. So, if the company is open for 12 hours a day, there are 6 blocks 
 of tours.
 
+\section*{Literature Overview}
+Before we tried to model the problem at hand, we read research papers on
+modeling problems similar to our own. One paper we came across discussed America 
+West and the Arizona State University using a mathematical model to decide on the best 
+airplane boarding strategy (Hogg, 2002). This paper gave us insight on handling mixed integer 
+problems and how they are modeled. We were able to better derive the decision variables 
+in our own problem after learning about how the ASU and America West team simplified 
+their problem. The ASU and America West team simplified the problems of boarding an 
+airplane by classifying the problems into two groups (Hogg). This helped us to 
+understand how to simplify our own constraints as well as which decision variable we 
+wanted to minimize.
+We came across Patrick Perkin’s paper on creating weekly timetables for the 
+Math Study Center at the University of Washington (Perkins, 2004). Perkin’s paper tackled 
+their scheduling problem in a two step process. The first step of their modeling process 
+utilized a relaxed version of constraints to just obtain a valid schedule. The second step 
+involved stricter constraints that influenced the objective function. This second step 
+would go on to produce better schedules. Perkin’s states that these better schedules are 
+better optimized and thus produce more efficient schedules, ~7% better (Perkins). 
+Another paper we read was by Nicholas Beaumont on scheduling staff that drove 
+to and serviced customers (Beaumont, 1997). In Beaumont’s case study, the staff he was trying 
+to schedule had many similarities to the staff we were trying to schedule. This included 
+constraints on the staff based on times they could work and the demand of their work 
+(Beaumont). Using binary values and other variables assigned to certain staff members to 
+restrict their start times was something that we wanted to implement in our model. These 
+constraints may change by week for our own partner, thus knowing the formulation of 
+these constraints was necessary to write up code that would create these constraints for 
+our partner to utilize once we are done with the project. Similar to this, the demand of the 
+staff in Beaumont’s study and our own problem of varying numbers of tours based on the 
+time of year. 
+These papers offered us guidance on our own problem and model. Simplify the 
+process; solve the problem two ways, one more relaxed and the other fit to tighter 
+constraints, and how to model certain restrictions that may change based on the situation. 
+All of the ideas listed we utilized to give our partners the best possible solution.
 
 \section*{Decision Variables and Parameters} First, let's define some parameters:
 \begin{align*}
@@ -110,17 +152,26 @@ Note that the last term in the function wraps around to make sure that we are no
 \section*{Constraints}
 \begin{enumerate}
 \item[(1)] Number of daily captains constraint: We want to have $c_d$ captains at work on day $d$.
-$$\sum_{i = 1}^{n}\sum_{j = 1}^{k}{\mathbf{x}_{ijd}} = c_d$$
-\item[(2)] Multiple start times constraint. The captain can only have one start time for each day.
-On day $d = 1,\dots, 7$, and for all captains $i = 1,\dots, n$:
-$$\sum_{j = k(d-1) + 1}^{kd}{\mathbf{x}_{ij}} \le 1$$
-\item[(3)] Number of days worked constraint. Each captain can only work a maximum of 4 days per week. 
-For each captain $i$:
-$$\sum_{j = 1}^{7k}{\mathbf{x}_{ij}} \le 4$$
-\item[(4)] Tours per time slot constraint. We would like to have a minimum number of captains available at each time slot in order to run the required number of tours. If we want $t_j$ tours at time slot $j$:
-$$\sum_{i = 1}^{n}{\mathbf{x}_{ij}} \ge t_j$$
-\item[(5)] Captain unavailability constraint. If captain $i$ is unavailable on day $d$:
-$$\sum_{j = k(d-1) + 1}^{kd}{\mathbf{x}_{ij}} = 0$$
+$$\sum_{i = 1}^{n}\sum_{j = 1}^{k}{x_{ijd}} = c_d.$$
+\item[(2)] Multiple start times constraint: The captain can only have one start time for each day. 
+For each day $d$, and for each captain $i$,only 
+$$\sum_{j = 1}^{k}{x_{ijd}} \le 1.$$
+\item[(3)] Number of days worked per week constraint: Each captain can work a maximum of 4 days per week. Some have to work less, so we'll define the maximum number of days captain $i$ can work as $y_i$.
+For each captain $i$,
+$$\sum_{d = 1}^{7}\sum_{j = 1}^{k}{x_{ijd}} \le y_i.$$
+\item[(4)] Tours per time slot constraint: We would like to have a certain number of captains available at each time slot in order to run the required number of tours. If we want $t_{jd}$ tours at time slot $j$ on day $d$ we have to first obtain the number of captains that are available for a tour (i.e. haven't run 5 or more tours in a day already). Define captain $i$ starting a shift or eligible for the tour $j$ on day $d$ by $z_{ijd}$.
+$$\sum_{i = 1}^{n}{z_{ijd}} = t_{jd}.$$
+\item[(5)] Captain unavailability constraint: If captain $i$ is unavailable on day $d$,
+$$\sum_{d = 1}^{7}\sum_{j = 1}^{k}{x_{ijd}} = 0.$$
+\item[(6)] Captain required tour constraint: Some captains are requested to run specific tours, so if captain $i$ has to work 
+day $d$ on time slot $j$,
+$$x_{ijd} = 1.$$
 \end{enumerate}
+
+\section*{Results} As of this writing, the code has been fairly buggy and we haven't been able to obtain a feasible solution. Sample output from our code is below and it is formatted to show the starting schedule visually. 
+\begin{center}
+\includegraphics[scale=0.1]{"RTD_result_bad".png}
+\end{center}
+What this shows is that the captains are front-loaded on each day and none of the tours per time slot constrains are satisfied. Further improvements of our algorithm are needed to obtain a solution. 
 
 \end{document}
