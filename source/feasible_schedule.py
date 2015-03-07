@@ -19,16 +19,15 @@ t_per_slot = dict()
 for day in range(days):
 	# these are ndarrays, may want to think about another structure
 	# at least 1 captain per day
-	t_per_slot[day] = np.ones(blocks_per_day * tours_per_block * days) * 2
-
-
+	temp = np.zeros(blocks_per_day * tours_per_block)
+	for i in range(2, 61, 2): temp[i] = 3
+	t_per_slot[day] = temp
+	#t_per_slot[day] = np.ones(blocks_per_day * tours_per_block) * 2
 
 # sets the number of captains per day: default 20
 # each index is a different day: index 0 = monday, index 1 = tuesday, etc.
-capt_lim_per_day = [20, 20, 20, 20, 20, 20, 20]
+capt_lim_per_day = [20] * 7
 
-
-#capt_dict[1] = [373, 72, 90, 1]
 
 ########################## INDIVIDUAL CONSTRAINTS ##############################
 ## INEQUALITY CONSTRAINTS --
@@ -44,34 +43,22 @@ capt_lim_per_day = [20, 20, 20, 20, 20, 20, 20]
 # Used to check work days in a row
 # passed in is a single captain
 # not used right now, just alternating groups.
-def days_worked_per_captain_constraint(captain, max_days_worked):
+def days_worked_per_captain_constraint(capt_dict, captain, max_days_worked=4):
 	day_count = 0
-	for day in range(len(captain)):
+	for day in range(7): # for each day of the week
 		# False = DON'T add timeslot on that day to current cap
 		#if day_count > max_days_worked:
 		#	return False
-
-		if len(captain[day]) > 0:
+		if len(capt_dict[captain][day]) > 0:
 			day_count += 1
-		else:
-			day_count = 0
+	# if return True, POP
+	return day_count > max_days_worked
 
-		if day_count > max_days_worked:
-			return False
-
-	return True	# True = add timeslots for that day
 	
 # mike - not sure what this is for for now
-def start_times_per_day_constraint(capt_dict, captain):
-	# check difference in ordered values
-	# should be >= 72
-	# returns True if satisfied
-	vals = sorted(capt_dict[captain])
-	diff = [x - vals[i - 1] for i, x in enumerate(vals)][1:]
-	for elem in diff:
-		if elem < 72:
-			return False
-	return True
+def tours_per_day_constraint(capt_dict, captain, day, max_tours_day=5):
+	# Pop if returns true
+	return (len(capt_dict[captain][day]) > max_tours_day)
 
 # mike - not sure what this is for for now
 def unable_to_work_constraint(capt_dict, captain, shifts_unable_to_work):
@@ -137,22 +124,24 @@ for day in range(days):
 	for captain in range(number_captains):
 		for timeslot in range(tours_per_block * blocks_per_day):
 			#if days_worked_per_captain_constraint(capt_dict[captain], max_days_worked):
-			if day == 0 or alternate_captains(capt_dict[captain][day - 1]):
+			if day == 0 or alternate_captains(capt_dict[captain][day - 1]): # try to ge this to work without if statement
 				# 1. give captain first timeslot in
-				capt_dict[captain][day].append(timeslot + (day * tours_per_block * blocks_per_day))
+				capt_dict[captain][day].append(timeslot)
 
 				# for testing
 				#if timeslot + (day * tours_per_block * blocks_per_day) >= 72:
 					#print str(timeslot + (day * tours_per_block * blocks_per_day))
 
 				# These are the constraints, if any constraint fails, booleans return TRUE to mean YES POP
-				if capt_block_constraint(capt_dict[captain][day], tours_per_block, (timeslot + (day * tours_per_block * blocks_per_day))):
+				if capt_block_constraint(capt_dict[captain][day], tours_per_block, timeslot):
 					capt_dict[captain][day].pop()
-
-				elif tours_per_time_slot_constraint(capt_dict, t_per_slot, day, (timeslot + (day * tours_per_block * blocks_per_day))):
+				elif tours_per_time_slot_constraint(capt_dict, t_per_slot, day, timeslot):
 					capt_dict[captain][day].pop()
-
 				elif capts_per_day_constraint(capt_dict, capt_lim_per_day, day):
+					capt_dict[captain][day].pop()
+				elif tours_per_day_constraint(capt_dict, captain, day, 5):
+					capt_dict[captain][day].pop()
+				elif days_worked_per_captain_constraint(capt_dict, captain, 4):
 					capt_dict[captain][day].pop()
 			else:
 				break
