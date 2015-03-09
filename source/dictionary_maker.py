@@ -1,5 +1,6 @@
 import numpy as np
 import csv
+from datetime import timedelta
 
 def captain_dictionary(number_captains=1):
 	d = dict()
@@ -71,7 +72,7 @@ def individual_constraints(filename):
 		counter = 0
 		for line in csv_reader:
 			# Captain Name
-			names[counter] = line[0]
+			names[line[0].lower().strip()] = counter
 			# Unavailability
 			unavailable = line[1].lower().split(' ')
 			# check each day to see if any are unavailable
@@ -87,3 +88,31 @@ def individual_constraints(filename):
 			max_days_per_week[counter] = int(line[2])
 			counter += 1
 	return names, days_unavailable, max_days_per_week
+
+def required_tours_from_file(names_dict, filename, number_captains, tours_per_block, blocks_per_day):
+	#
+	#First, create a list with the timeslots for easy lookup.
+	time_to_slot = []
+	t = timedelta(minutes = 9*60)
+	t_add = timedelta(minutes = 10)
+	for i in range(tours_per_block * blocks_per_day):
+		temp = ':'.join(str(t + i * t_add).split(':')[:2])
+		time_to_slot.append(temp)
+	# required tours dictionary
+	required_tours = dict()
+	for i in range(number_captains):
+		required_tours[i] = [[], [], [], [], [], [], []]
+	day_dict = {'mon':0, 'tues':1, 'wed':2, 'thur':3, 'fri':4, 'sat':5, 'sun':6}
+	with open(filename, 'rU') as f:
+		f.readline()
+		csv_reader = csv.reader(f)
+		for line in csv_reader:
+			capt_index = names_dict[line[3].lower().strip()]
+			day_str = line[0].lower().strip()
+			day_index = day_dict[day_str]
+			time_index = time_to_slot.index(line[2].strip())
+			if time_index not in required_tours[capt_index][day_index]:
+				required_tours[capt_index][day_index].append(time_index)
+			required_tours[capt_index][day_index].sort()
+	return required_tours
+			
