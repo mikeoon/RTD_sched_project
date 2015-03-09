@@ -1,40 +1,45 @@
 import numpy as np
+from datetime import timedelta
+import dictionary_maker as dm
 
-number_captains = 40
+number_captains = 38
 tours_per_block = 12
 blocks_per_day = 6
 days = 7
 max_days_worked = 3
 
+################################### TO DO ######################################
+## Implement Constraints
+## 	- Unable to work (certain times or shifts)
+## 	- Has to work specific shift
+## Implement Interface
+##		- Input 
+##  	- Output to csv/excel format (Done)
+
+
 # initialize a dictionary of start times
 # keys are captain, values are list of 7 lists, each of the 7 lists are days of the week. Those values are time slots on that day
-capt_dict = dict()
-for captain in range(number_captains):
-	# empty schedule for each day
-	capt_dict[captain] = [[], [], [], [], [], [], []] # could be a list of 7 lists, 1 per day
+capt_dict = dm.captain_dictionary(number_captains)
 
 # need to set which days need x amount of tours
 # keys are days, values are (tours_per_block * blocks_per_day) indicies, each value giving how many captains per slot
-t_per_slot = dict()
-for day in range(days):
-	# these are ndarrays, may want to think about another structure
-	# at least 1 captain per day
-	temp = np.zeros(blocks_per_day * tours_per_block)
-	for i in range(2, 61, 2): temp[i] = 3
-	t_per_slot[day] = temp
-	#t_per_slot[day] = np.ones(blocks_per_day * tours_per_block) * 2
+t_per_slot = dm.tours_per_slot()
+
+names, tours_unavailable, max_days_per_captain = dm.individual_constraints('CaptainConstraints.csv')
+
+required_tours = dm.required_tours(number_captains)
 
 # sets the number of captains per day: default 20
 # each index is a different day: index 0 = monday, index 1 = tuesday, etc.
-capt_lim_per_day = [20] * 7
+capt_lim_per_day = [18] * 7
 
 
 ########################## INDIVIDUAL CONSTRAINTS ##############################
 ## INEQUALITY CONSTRAINTS --
 ## 1) Days worked per captian constraint. (No more than 4 perweek)
-## 2) Start times per day constrain. (No more than once per day)
+## 2) Start times per day constraint. (No more than once per day)
 ## 3) Unable to work constraint. (Can't work specific days)
-## 4) Has to work specific shift constraint. (Some shifts are rquested)
+## 4) Has to work specific shift constraint. (Some shifts are requested)
 ## EQUALITY CONSTRAINTS --
 ## 5) Tours per timeslot constraint. (Specified by the user, usually 1-3)
 ## 6) Captains per day constraint. (Specified by the user, usually 20)
@@ -59,10 +64,6 @@ def days_worked_per_captain_constraint(capt_dict, captain, max_days_worked=4):
 def tours_per_day_constraint(capt_dict, captain, day, max_tours_day=5):
 	# Pop if returns true
 	return (len(capt_dict[captain][day]) > max_tours_day)
-
-# mike - not sure what this is for for now
-def unable_to_work_constraint(capt_dict, captain, shifts_unable_to_work):
-	return 1
 
 # Used to check tours per time 
 def tours_per_time_slot_constraint(capt_dict, t_per_slot, day, timeslot):
@@ -96,27 +97,60 @@ def capt_block_constraint(captain_slot, tours_per_block, timeslot):
 		check_slot = timeslot % tours_per_block
 		return slot != check_slot
 
+def tours_unavailable_constraint(tours_unavailable, captain, day, timeslot):
+	# POP if returns True
+	return timeslot in tours_unavailable[captain][day]
+
+def required_tour_constraint(required_tours, captain, day, timeslot):
+	# Return True if the timeslot is a required tour
+	return timeslot in required_tours[captain][day]
+
 # Used to alternate groups:
 def alternate_captains(capt_last_day):
 	return  len(capt_last_day) == 0
 
-# not yet complete, doesn't get all values
-def convert_to_matrix(cap_dict, number_captains = 1, tours_per_block = 12, blocks_per_day = 6, days = 7):
-	# create first matrix to stack on
-	sched_matrix = np.zeros(tours_per_block * blocks_per_day * days)
-	for day in range(len(cap_dict[0])):
-		#print type(cap_dict[0])
-		sched_matrix[cap_dict[0][day]] = 1
-	sched_matrix = np.matrix(sched_matrix)
+def dict_to_matrix(cap_dict, number_captains = 1, tours_per_block = 12, blocks_per_day = 6, days = 7):
+	# Puts the dictionary in matrix format.
+	result = []
+	for captain in range(number_captains):
+		capt_temp = []
+		for day in range(days):
+			day_temp = [0] * (tours_per_block * blocks_per_day) #72
+			for t in capt_dict[captain][day]:
+				day_temp[t] = 1
+			capt_temp.append(day_temp)
+		capt_temp = np.hstack(capt_temp)
+		result.append(capt_temp)
+	return np.vstack(result)
 
-	for captain in range(number_captains - 1):
-		temp_row = np.zeros(tours_per_block * blocks_per_day * days)
-		for day in range(days - 1):
-			temp_row[cap_dict[captain+1][day]] = 1
-		temp_row = np.matrix(temp_row)
-		sched_matrix = np.vstack((sched_matrix, temp_row))
-	return sched_matrix
-
+def dict_to_schedule(capt_dict, names_dict, filename = 'test.csv', number_captains = 1, ours_per_block = 12, blocks_per_day = 6, days = 7):
+	# Method to take in the captain dictionary and print out a csv file of a 
+	# schedule in the same format as RTD currently does. 
+	#
+	#First, create a list with the timeslots for easy lookup.
+	time_to_slot = []
+	t = timedelta(minutes = 9*60)
+	t_add = timedelta(minutes = 10)
+	for i in range(tours_per_block * blocks_per_day):
+		temp = ':'.join(str(t + i * t_add).split(':')[:2])
+		time_to_slot.append(temp)
+	# Now, put everythong together in a result list.
+	result = []
+	for captain in range(number_captains):
+		capt_temp = []
+		for day in range(days):
+			day_temp = []
+			for t in capt_dict[captain][day]:
+				day_temp.append(time_to_slot[t])
+			capt_temp.append(' '.join(day_temp))
+		result.append(','.join(capt_temp))
+	# Now, write the result list to a csv file
+	with open(filename, 'w') as f:
+		f.write('Captain, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday \n')
+		counter = 0
+		for line in result:
+			f.write(names[counter] + ',' + line + '\n')
+			counter += 1
 
 
 # Main loops/iteration for creating schedule
@@ -141,20 +175,25 @@ for day in range(days):
 					capt_dict[captain][day].pop()
 				elif tours_per_day_constraint(capt_dict, captain, day, 5):
 					capt_dict[captain][day].pop()
-				elif days_worked_per_captain_constraint(capt_dict, captain, 4):
+				elif days_worked_per_captain_constraint(capt_dict, captain, max_days_per_captain[captain]):
+					capt_dict[captain][day].pop()
+				elif tours_unavailable_constraint(tours_unavailable, captain, day, timeslot):
 					capt_dict[captain][day].pop()
 			else:
 				break
 				# this is where you're going to check for the individual. not yet implemented
 
 
-for i in range(len(capt_dict.keys())):
+#for i in range(len(capt_dict.keys())):
 #for i in range(20):
-	print capt_dict[i]
+#	print capt_dict[i]
 
+#''np.savetxt('test.csv', dict_to_schedule(capt_dict, 40), delimiter = ',')
+#np.savetxt('test_03082015.csv',  dict_to_matrix(capt_dict, 40), delimiter = ',')
+
+dict_to_schedule(capt_dict, names_dict = names, filename = 'test.csv', number_captains = number_captains)
 #test = convert_to_matrix(capt_dict, 40)
 #np.savetxt('test1.csv', test, delimiter=',')
-
 
 ######################## FEASIBLE SOLUTION ALGORITHM ###########################
 ## 1) Initialize captain dictionary.
@@ -171,3 +210,10 @@ for i in range(len(capt_dict.keys())):
 ##        requiring certain captains to work on specific time slots will have to
 ##        be solved by initializing them first. 
 ## 3) Repeat (2) for every day 1,...,7. 
+
+## Scheme:
+## Run with ideal constraints (switching every day, etc)
+## Then run without switiching to fill in gaps
+## Then run with relaxed constraints to completely fill in gaps
+## Assign on call shifts last since they have separate constraints 
+## (i.e. don't count as a work day and some peole don't want them)
