@@ -29,7 +29,7 @@
 \title{Math 480 Project Draft \\ Captain Scheduling for Ride the Ducks} 
 
 \author{Zach Bickel and Michael Yoon}
-\date{March 2, 2015}
+\date{March 18, 2015}
 \maketitle
 
 \begin{abstract}
@@ -48,35 +48,20 @@ schedule making.
 \end{abstract}
 
 
+\section*{Background}
+Scheduling problems are very common for small businesses where many managers are still doing it by hand. Management at Ride the Ducks of Seattle currently spends upwards of ten hours per week scheduling captains for tours. Our goal is to build scheduling software that will drastically cut this time down and automatically build a schedule. This will be flexible enough so that a user will be able to update the constraints as they change. 
+
+Ride the Ducks of Seattle offers continuous tours of downtown Seattle every day of the year except for Christmas, Christmas Eve and Thanksgiving. The Land \& Water Tour is a 90-minute tour that begins from two separate locations in downtown Seattle. Each tour is directed by a Captain, who operates an amphibious vehicle called a DUKW, also known as a duck. After each 90-minute tour is finished, there is a 30-minute break period for de-boarding the current tour, boarding the next tour, and a small break for the Captain. Each Captain will usually work 5 tours a day, 4 days a week, although there is a lot of variability from this in practice. Throughout this paper, we refer to 2-hour tour blocks, or simply 2-hour blocks, to denote a 90-minute tour followed by a 30-minute break period.
+
+Scheduling the Captains in a way that satisfies the company as well as the 
+individual Captains can be tricky. There are individual captain constraints that we have to deal with while filling the tours Ride the Ducks wants to run. Captain constraints can vary week to week and the amount of tours run in a day depends seasonally with the warmer seasons needing more tours than the cooler seasons. Due to the need of a flexible scheduling system, the notion of making the scheduling software easy to edit is crucial. The company can then 
+make their own schedules with changing data. 
+
 \section*{Goal}
-Scheduling problems are very common for small businesses where many managers are
-still doing it by hand. This can lead to hours of tinkering with the schedule to get the most 
-out of the workers. Ride the Ducks of Seattle is a major tourist attraction that takes their 
-customers on a tour of Seattle on land and water. A captain directs each tour; the captains 
-are the ones who operate the vehicles, known as ducks, and gives the tours. The ducks are 
-the pride and joy of the company. These vehicles are capable of going on land to water 
-and vise versa. Each tour is 2 hours long, which includes about 90 minutes of touring 
-with a 30-minute break for the captains. The amount of tours run depends seasonally with 
-the warmer seasons needing more tours than the cooler seasons. Scheduling the captains 
-and their ducks in a way that satisfies working conditions by the company as well as the 
-individual captains can be tricky. Management at Ride the Ducks of Seattle currently 
-spends upwards of ten hours per week scheduling captains for tours. Ten hours creating a 
-schedule is much too long, we believe we can not only create a schedule for Ride the 
-Ducks much faster, but also create a schedule that allows the company to run tours 
-efficiently while satisfying the captains’ and the company’s needs. Our goal is to build 
-scheduling software that will drastically cut time down and automatically build a 
-schedule. This will be flexible enough so that a user will be able to update the constraints
-as they come up. Ride the Ducks of Seattle is a very private about the details for how 
-their company is run. They keep much of their data to themselves to protect the company 
-from those that want them gone. Due to their privacy, the notion of making the 
-scheduling software easy to edit and make changes to is crucial. The company can then 
-make their own schedules with the data that they might not have given us. With this 
-schedule creator, we hope that Ride the Ducks will spend less time working on 
-scheduling the captains and spend their newly acquired time efficiently. 
+Out goal is to automate a scheduling system for Ride the Ducks Captains to cover all shifts while satisfying each Captain's individual constraints. % and attempting to minimize 4-day stretches.
 
 \section*{Simplifications}
-Ride the Ducks is open 7 days a week from 9 AM to 9 PM and offers 90-minute tours 
-where the driver ideally gets 30 minutes of rest before the next tour. There is one captain 
+Ride the Ducks is open 7 days a week and generally runs tours from 9:20 AM to 7:20 PM during the busy season. To make the software future-proof, we extend the schedule so that the first tours can start as early as 9 AM and the last tours can start as late as 9 PM. There is one captain 
 and one duck per tour. Each captain is not supposed to work more than four days a week 
 and there are special constraints for individual captains, such as “Captain A cannot work 
 on Tuesday”. Our objective is to minimize the total number of 4-day stretches all captains 
