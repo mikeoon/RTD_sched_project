@@ -46,145 +46,186 @@ capt_lim_per_day = [18] * 7
 ## 6) Captains per day constraint. (Specified by the user, usually 20)
 
 
-# Used to check work days in a row
-# passed in is a single captain
-# not used right now, just alternating groups.
 def days_worked_per_captain_constraint(capt_dict, captain, max_days_worked=4):
+	# Checks to see if a captain is working more than four days in a week.
+	#
+	# Params:
+	# 		capt_dict: Dictionary of captains. Each value is a list of 7 lists. 
+	#                Each of the sublists consists of the tour times a captain 
+	# 					  runs. 
+	#		captain: The number of the captain. This is the key to capt_dict.
+	#     max_days_worked: The maximum number of days worked a captain can 
+	# 							  work in a week.
+	# Returns:
+	# 		True if the constraint is violated.
 	day_count = 0
 	for day in range(7): # for each day of the week
-		# False = DON'T add timeslot on that day to current cap
-		#if day_count > max_days_worked:
-		#	return False
 		if len(capt_dict[captain][day]) > 0:
-			day_count += 1
-	# if return True, POP
+			day_count += 1 # count number of days with a shift
 	return day_count > max_days_worked
 
-	
-# mike - not sure what this is for for now
 def tours_per_day_constraint(capt_dict, captain, day, max_tours_day=5):
-	# Pop if returns true
+	# Checks to see if a Captain has been scheduled for too many tours in a day.
+	#
+	# Params:
+	# 		capt_dict: Dictionary of captains. Each value is a list of 7 lists. 
+	#                Each of the sublists consists of the tour times a captain 
+	# 					  runs.
+	# 		captain: The number of the captain. This is the first key to the 
+	#					captain dictionary.
+	#     day: The day number (0-6). This is the second key to the captain
+	# 			  dictionary. Monday is 0.
+	#		max_tours_day: Maximum number of tours in a day (usually 5).
+	# Returns:
+	#		True if the constraint is violated.
 	return (len(capt_dict[captain][day]) > max_tours_day)
 
-# Used to check tours per time 
 def tours_per_time_slot_constraint(capt_dict, t_per_slot, day, timeslot):
+	# Checks to see if the number of tours RTD wants to run in a particular 
+	# timeslot is violated. Currently, it only checks if we've overscheduled
+	# a particular timeslot. 
+	#
+	# Params:
+	# 		capt_dict: Dictionary of captains. Each value is a list of 7 lists. 
+	#                Each of the sublists consists of the tour times a captain 
+	# 					  runs.
+	#		t_per_slot: Dictionary of the number of tours we want to run at a 
+	# 						particular timeslot on a cetrain day. Each value is 
+	# 						a list of lists. Each sublist is of length 72 because of 
+	#                 the number of timeslots in a single day.
+	#		day: The day of the week (0-6). Monday is 0.
+	#		timeslot: The timeslot on any given day (0-71).
+	# Returns:
+	#		True if the constraint is violated.
 	tour_count = 0
 	for captain in range(len(capt_dict)):
 		if timeslot in capt_dict[captain][day]:
 			tour_count += 1
+	return tour_count > t_per_slot[day][timeslot]
 
-	return tour_count > t_per_slot[day][timeslot]	# True = pop
-
-
-# Check number of captains per day
 def capts_per_day_constraint(capt_dict, capt_lim_per_day, day):
+	# Checks to see if we've scheduled too many captains in a given day. 
+	#
+	# Params: 
+	# 		capt_dict: Dictionary of captains. Each value is a list of 7 lists. 
+	#                Each of the sublists consists of the tour times a captain 
+	# 					  runs.
+	#		capt_lim_per_day: Dictionary of the maximum number of captains we can
+	# 								schedule in any given day. Key is the day and value 
+	#								value is the max captains for that day. 
+	#		day: The day of the week (0-6). Monday is 0.
+	# Returns:
+	#		True if constraint is violated.
 	capt_count = 0
 	for captain in range(len(capt_dict.keys())):
 		if len(capt_dict[captain][day]) != 0:
 			capt_count += 1
-
-	# True = POP
 	return capt_count > capt_lim_per_day[day]
 
-# Used to check if captain is working in a timeslot already
-def capt_block_constraint(captain_slot, tours_per_block, timeslot):
-	if len(captain_slot) <= 1:
-		# to catch index out of bounds, first check
-		return False
-
-	else:
-		# True = pop the most recent time slot
-		slot = captain_slot[0] % tours_per_block
-		check_slot = timeslot % tours_per_block
-		return slot != check_slot
-
-def capt_block_constraint_2(capt_dict, captain, day, tours_per_block):
+def capt_block_constraint(capt_dict, captain, day, tours_per_block=12):
+	# Checks to make sure that a Captain doesn't run multiple tours in 
+	# a given day.
+	#
+	# Params:
+	# 		capt_dict: Dictionary of captains. Each value is a list of 7 lists. 
+	#                Each of the sublists consists of the tour times a captain 
+	# 					  runs.
+	# 		captain: The number of the captain. This is the first key to the 
+	#					captain dictionary.
+	#     day: The day number (0-6). This is the second key to the captain
+	# 			  dictionary. Monday is 0.
+	#		tours_per_block: Number of potential tour time slots in a 2-hour block. 
+	#							  Default is 12 since we run every 10 minutes. 
+	# Returns:
+	# 		True if the constraint is violated.
 	l = sorted(capt_dict[captain][day])
-	for i in range(len(l) - 1):
-		if (l[i+1] % tours_per_block) != (l[i] % tours_per_block):
-			return True # POP
-		elif l[i+1] - l[i] < tours_per_block:
-			return True
+	for i in range(len(l)):
+		for j in range(i + 1, len(l)):
+			if abs(l[i] - l[j]) < tours_per_block:
+				return True
 	return False
 
 def tours_unavailable_constraint(tours_unavailable, captain, day, timeslot):
-	# POP if returns True
+	# Checks to see if a Captain is unavailable to run a tour. Currently, this
+	# is begin used to make sure a Captain is not scheduled on their day off. 
+	#
+	# Params: 
+	# 		tours_unavailable: Dictionary of the form X[captain][day] that says
+	#								 which tours a captain cannot work. 
+	# 		captain: The number of the captain. This is the first key to the 
+	#					tours unavailable dictionary.
+	#     day: The day number (0-6). This is the second key to the tours 
+	#			  unavailable dictionary. Monday is 0.
+	#		timeslot: The timeslot in the day (0-71).
+	# Returns:
+	#		True if the constraint is violated. 
 	return timeslot in tours_unavailable[captain][day]
+
+def main_constraints(capt_dict, captain, day, timeslot, tours_per_block, 
+							t_per_slot, capt_lim_per_day, tours_unavailable):
+	if capt_block_constraint(capt_dict, captain, day, tours_per_block):
+		return True
+	elif tours_per_time_slot_constraint(capt_dict, t_per_slot, day, timeslot):
+		return True
+	elif capts_per_day_constraint(capt_dict, capt_lim_per_day, day):
+		return True
+	elif days_worked_per_captain_constraint(capt_dict, captain, max_days_per_captain[captain]):
+		return True
+	elif tours_per_day_constraint(capt_dict, captain, day, 5):
+		return True
+	elif tours_unavailable_constraint(tours_unavailable, captain, day, timeslot):
+		return True
+	return False
 
 def required_tour_constraint(required_tours, captain, day, timeslot):
 	# Return True if the timeslot is a required tour
 	return timeslot in required_tours[captain][day]
 
-# Used to alternate groups: 
-def alternate_captains(capt_last_day):
-	return  len(capt_last_day) == 0
 
-def dict_to_matrix(cap_dict, number_captains = 1, tours_per_block = 12, blocks_per_day = 6, days = 7):
-	# Puts the dictionary in matrix format.
-	result = []
-	for captain in range(number_captains):
-		capt_temp = []
-		for day in range(days):
-			day_temp = [0] * (tours_per_block * blocks_per_day) #72
-			for t in capt_dict[captain][day]:
-				day_temp[t] = 1
-			capt_temp.append(day_temp)
-		capt_temp = np.hstack(capt_temp)
-		result.append(capt_temp)
-	return np.vstack(result)
+################################ MAIN LOOPS ####################################
 
-def dict_to_schedule(capt_dict, names_dict, filename = 'test.csv', number_captains = 1, ours_per_block = 12, blocks_per_day = 6, days = 7):
-	# Method to take in the captain dictionary and print out a csv file of a 
-	# schedule in the same format as RTD currently does. 
-	#
-	#First, create a list with the timeslots for easy lookup.
-	time_to_slot = []
-	t = timedelta(minutes = 9*60)
-	t_add = timedelta(minutes = 10)
-	for i in range(tours_per_block * blocks_per_day):
-		temp = ':'.join(str(t + i * t_add).split(':')[:2])
-		time_to_slot.append(temp)
-	# Now, put everythong together in a result list.
-	result = []
-	for captain in range(number_captains):
-		capt_temp = []
-		for day in range(days):
-			day_temp = []
-			for t in capt_dict[captain][day]:
-				day_temp.append(time_to_slot[t])
-			capt_temp.append(' '.join(day_temp))
-		result.append(','.join(capt_temp))
-	# Now, write the result list to a csv file
-	with open(filename, 'w') as f:
-		f.write('Captain, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday \n')
-		counter = 0
-		for line in result:
-			f.write('Captain ' + str(counter) + ',' + line + '\n')
-			counter += 1
 
-# First, put the required tours in the schedule
-for i in range(number_captains):
-	capt_dict[i] = required_tours[i]
+# First, put the required tours in the schedule and fill out from there.
+for captain in range(number_captains):
+	capt_dict[captain] = required_tours[captain]
+	# check each day to see when the captain's have required tours
+	for day in range(days):
+		if len(capt_dict[captain][day]) != 0:
+			# get first tour and add new tours based on the first time slot's
+			# block position.
+			l = sorted(capt_dict[captain][day])
+			time1 = l[0] % tours_per_block # gets block posiiton
+			potentials = [time1 + tours_per_block*i for i in range(5)] # get potential tours that the captain can run 
+			# 'potentials' is a list of potential time slots that are 2 hours apart
+			for timeslot in potentials:
+				if timeslot > tours_per_block * blocks_per_day:
+					break # out of bounds timeslot (> 72)
+				elif len(capt_dict[captain][day]) < 5: # captain does not have a full day
+					capt_dict[captain][day].append(timeslot)
+					if capt_block_constraint(capt_dict, captain, day, tours_per_block):
+						capt_dict[captain][day].pop()
+					elif tours_per_time_slot_constraint(capt_dict, t_per_slot, day, timeslot):
+						capt_dict[captain][day].pop()
+					elif capts_per_day_constraint(capt_dict, capt_lim_per_day, day):
+						capt_dict[captain][day].pop()
+					elif tours_per_day_constraint(capt_dict, captain, day, 5):
+						capt_dict[captain][day].pop()
+					elif tours_unavailable_constraint(tours_unavailable, captain, day, timeslot):
+						capt_dict[captain][day].pop()
 
+#dm.dict_to_schedule(capt_dict, names_dict = names, filename = 'test.csv', number_captains = number_captains)
 
 # Main loops/iteration for creating schedule
 for day in range(days):
 	for captain in range(number_captains):
 		for timeslot in range(tours_per_block * blocks_per_day):
 			#if days_worked_per_captain_constraint(capt_dict[captain], max_days_worked):
-			#if day == 0 or alternate_captains(capt_dict[captain][day - 1]): # try to ge this to work without if statement
-			if len(required_tours[captain][day]) != 0:
+			if day == 0 or len(capt_dict[captain][day - 1]) == 0: # try to ge this to work without if statement
+			#if len(required_tours[captain][day]) != 0:
 				# 1. give captain first timeslot in
 				capt_dict[captain][day].append(timeslot)
 
-				# for testing
-				#if timeslot + (day * tours_per_block * blocks_per_day) >= 72:
-					#print str(timeslot + (day * tours_per_block * blocks_per_day))
-
-				# These are the constraints, if any constraint fails, booleans return TRUE to mean YES POP
-				#if capt_block_constraint(capt_dict[captain][day], tours_per_block, timeslot):
-				#	capt_dict[captain][day].pop()
-				if capt_block_constraint_2(capt_dict, captain, day, tours_per_block):
+				if capt_block_constraint(capt_dict, captain, day, tours_per_block):
 					capt_dict[captain][day].pop()
 				elif tours_per_time_slot_constraint(capt_dict, t_per_slot, day, timeslot):
 					capt_dict[captain][day].pop()
@@ -197,15 +238,33 @@ for day in range(days):
 				elif tours_unavailable_constraint(tours_unavailable, captain, day, timeslot):
 					capt_dict[captain][day].pop()
 			else:
-				break
-				# this is where you're going to check for the individual. not yet implemented
+				break # go on to the next day
 
+# Main loops/iteration for creating schedule
+for day in range(days):
+	for captain in range(number_captains):
+		for timeslot in range(tours_per_block * blocks_per_day):
+			capt_dict[captain][day].append(timeslot)
+
+			if capt_block_constraint(capt_dict, captain, day, tours_per_block):
+				capt_dict[captain][day].pop()
+			elif tours_per_time_slot_constraint(capt_dict, t_per_slot, day, timeslot):
+				capt_dict[captain][day].pop()
+			elif capts_per_day_constraint(capt_dict, capt_lim_per_day, day):
+				capt_dict[captain][day].pop()
+			elif tours_per_day_constraint(capt_dict, captain, day, 5):
+				capt_dict[captain][day].pop()
+			elif days_worked_per_captain_constraint(capt_dict, captain, max_days_per_captain[captain]):
+				capt_dict[captain][day].pop()
+			elif tours_unavailable_constraint(tours_unavailable, captain, day, timeslot):
+				capt_dict[captain][day].pop()
+		else:
+			break # go on to the next day
 
 #for i in range(len(capt_dict.keys())):
 #for i in range(20):
 #	print capt_dict[i]
-
-dict_to_schedule(capt_dict, names_dict = names, filename = 'test.csv', number_captains = number_captains)
+dm.dict_to_schedule(capt_dict, names_dict = names, filename = 'test.csv', number_captains = number_captains)
 #test = convert_to_matrix(capt_dict, 40)
 #np.savetxt('test1.csv', test, delimiter=',')
 

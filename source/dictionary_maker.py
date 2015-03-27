@@ -115,4 +115,48 @@ def required_tours_from_file(names_dict, filename, number_captains, tours_per_bl
 				required_tours[capt_index][day_index].append(time_index)
 			required_tours[capt_index][day_index].sort()
 	return required_tours
-			
+
+
+def dict_to_schedule(capt_dict, names_dict, filename = 'test.csv', number_captains = 1, tours_per_block = 12, blocks_per_day = 6, days = 7):
+	# Method to take in the captain dictionary and print out a csv file of a 
+	# schedule in the same format as RTD currently does. 
+	#
+	#First, create a list with the timeslots for easy lookup.
+	time_to_slot = []
+	t = timedelta(minutes = 9*60)
+	t_add = timedelta(minutes = 10)
+	for i in range(tours_per_block * blocks_per_day):
+		temp = ':'.join(str(t + i * t_add).split(':')[:2])
+		time_to_slot.append(temp)
+	# Now, put everythong together in a result list.
+	result = []
+	for captain in range(number_captains):
+		capt_temp = []
+		for day in range(days):
+			day_temp = []
+			l = sorted(capt_dict[captain][day])
+			for t in l:
+				day_temp.append(time_to_slot[t])
+			capt_temp.append(' '.join(day_temp))
+		result.append(','.join(capt_temp))
+	# Now, write the result list to a csv file
+	with open(filename, 'w') as f:
+		f.write('Captain, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday \n')
+		counter = 0
+		for line in result:
+			f.write('Captain ' + str(counter) + ',' + line + '\n')
+			counter += 1
+
+def dict_to_matrix(cap_dict, number_captains = 1, tours_per_block = 12, blocks_per_day = 6, days = 7):
+	# Puts the dictionary in matrix format.
+	result = []
+	for captain in range(number_captains):
+		capt_temp = []
+		for day in range(days):
+			day_temp = [0] * (tours_per_block * blocks_per_day) #72
+			for t in capt_dict[captain][day]:
+				day_temp[t] = 1
+			capt_temp.append(day_temp)
+		capt_temp = np.hstack(capt_temp)
+		result.append(capt_temp)
+	return np.vstack(result)
